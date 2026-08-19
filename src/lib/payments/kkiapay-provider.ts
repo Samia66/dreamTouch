@@ -31,7 +31,7 @@ import type {
  *       reponse.status: SUCCESS | FAILED | INSUFFICIENT_FUND |
  *         TRANSACTION_NOT_ELIGIBLE | TRANSACTION_NOT_FOUND |
  *         INVALID_TRANSACTION | INVALID_TRANSACTION_TYPE
- */ 
+ */
 
 export function normalizePhoneForKkiapay(rawPhone: string): string {
   const digitsOnly = rawPhone.replace(/\D/g, "");
@@ -87,7 +87,7 @@ export class KkiapayProvider implements PaymentProvider {
       amount: String(input.amount),
       ref: input.reference,
       name: input.customerName,
-      phone: input.customerPhone,
+      phone: normalizePhoneForKkiapay(input.customerPhone),
       email: input.customerEmail
     });
     return {
