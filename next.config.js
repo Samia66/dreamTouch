@@ -2,6 +2,9 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+    experimental: {
+    serverComponentsExternalPackages: ["pdfkit", "fontkit", "png-js"]
+  },
   async headers() {
     return [
       {

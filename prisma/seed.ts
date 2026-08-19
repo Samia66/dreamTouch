@@ -22,11 +22,11 @@ async function main() {
     }
   });
 
-  const tiers = [
-    { name: "Phase 1 — Early Bird", minParticipants: 1, maxParticipants: 5, price: 5000, order: 1 },
-    { name: "Phase 2 — Standard", minParticipants: 6, maxParticipants: 10, price: 7000, order: 2 },
-    { name: "Phase 3 — Dernières places", minParticipants: 16, maxParticipants: 5, price: 7500, order: 3 }
-  ];
+ const tiers = [
+  { name: "Phase 1 — Early Bird", minParticipants: 1, maxParticipants: 5, price: 5000, order: 1 },
+  { name: "Phase 2 — Standard", minParticipants: 6, maxParticipants: 15, price: 7000, order: 2 },
+  { name: "Phase 3 — Dernières places", minParticipants: 16, maxParticipants: 20, price: 7500, order: 3 }
+];
 
   for (const tier of tiers) {
     const existing = await prisma.pricingTier.findFirst({

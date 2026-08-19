@@ -22,13 +22,12 @@ import type {
  *    tester le chemin complet (y compris idempotence et double envoi).
  */
 export class MockProvider implements PaymentProvider {
-  async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    return {
-      paymentUrl: `${appUrl}/paiement/mock/${input.registrationId}?amount=${input.amount}&ref=${input.reference}`,
-      providerTransactionId: `MOCK-${uuid()}`
-    };
-  }
+ async initiatePayment(input: InitiatePaymentInput): Promise<InitiatePaymentResult> {
+  return {
+    paymentUrl: `/paiement/mock/${input.registrationId}?amount=${input.amount}&ref=${input.reference}`,
+    providerTransactionId: `MOCK-${uuid()}`
+  };
+}
 
   async verifyWebhook(rawBody: string): Promise<WebhookVerificationResult> {
     const parsed = JSON.parse(rawBody) as {
