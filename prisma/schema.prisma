@@ -1,0 +1,210 @@
+// DreamTouch Experience #001 — THE UNKNOWN
+// Schema de base de donnees. PostgreSQL + Prisma.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// ADMIN
+// ---------------------------------------------------------------------------
+model Admin {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  lastLoginAt  DateTime?
+}
+
+// ---------------------------------------------------------------------------
+// EVENT
+// ---------------------------------------------------------------------------
+// confirmedCount est incremente UNIQUEMENT au moment ou un paiement est
+// reellement confirme (webhook Celtis verifie). C'est la source de verite
+// pour la capacite et pour la determination du palier tarifaire.
+model Event {
+  id             String    @id @default(uuid())
+  name           String
+  slug           String    @unique
+  edition        String    @default("#001")
+  tagline        String?
+  date           DateTime? // NULL = "a definir"
+  location       String?   // NULL = "devoile apres inscription"
+  durationLabel  String    @default("3 heures")
+  capacity       Int       @default(20)
+  confirmedCount Int       @default(0) // uniquement paiements CONFIRMED
+  status         EventStatus @default(OPEN)
+  whatsappNumber String    @default("0129791717")
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  pricingTiers PricingTier[]
+  registrations Registration[]
+  settings     EventSetting[]
+}
+
+enum EventStatus {
+  OPEN
+  SOLD_OUT
+  CLOSED
+}
+
+// ---------------------------------------------------------------------------
+// PRICING TIER — stocke en base, jamais code en dur dans l'app.
+// ---------------------------------------------------------------------------
+model PricingTier {
+  id               String @id @default(uuid())
+  event            Event  @relation(fields: [eventId], references: [id])
+  eventId          String
+  name             String // "Phase 1 - Early Bird", "Phase 2", "Phase 3"
+  minParticipants  Int    // borne inferieure incluse (1-index)
+  maxParticipants  Int    // borne superieure incluse
+  price            Int    // FCFA
+  order            Int    // ordre d'application 1,2,3...
+  active           Boolean @default(true)
+
+  @@index([eventId, order])
+}
+
+// ---------------------------------------------------------------------------
+// EVENT SETTING — parametres configurables (cle/valeur) pour tout ce qui ne
+// merite pas sa propre colonne (ex: duree de validite d'une reservation).
+// ---------------------------------------------------------------------------
+model EventSetting {
+  id      String @id @default(uuid())
+  event   Event  @relation(fields: [eventId], references: [id])
+  eventId String
+  key     String
+  value   String
+
+  @@unique([eventId, key])
+}
+
+// ---------------------------------------------------------------------------
+// REGISTRATION
+// ---------------------------------------------------------------------------
+// Le prix (lockedPrice) est fige au moment de la creation, selon la politique
+// documentee dans src/lib/pricing.ts (section "verrouillage du prix").
+model Registration {
+  id            String   @id @default(uuid())
+  reference     String   @unique // ex: DT-2026-0001
+  event         Event    @relation(fields: [eventId], references: [id])
+  eventId       String
+
+  firstName     String
+  lastName      String
+  phone         String
+  email         String
+  age           Int
+  city          String
+  profession    String
+  emergencyName  String?
+  emergencyPhone String?
+
+  acceptedTerms   Boolean @default(false)
+  acceptedContact Boolean @default(false)
+
+  lockedPrice   Int      // FCFA, fige a la creation
+  pricingTierId String?
+
+  status        RegistrationStatus @default(PENDING_PAYMENT)
+  expiresAt     DateTime // duree de validite de la reservation temporaire
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  payments Payment[]
+  ticket   Ticket?
+
+  @@index([eventId, status])
+  @@index([phone])
+  @@index([email])
+}
+
+enum RegistrationStatus {
+  PENDING_PAYMENT
+  CONFIRMED
+  PAYMENT_FAILED
+  EXPIRED
+  CANCELLED
+}
+
+// ---------------------------------------------------------------------------
+// PAYMENT
+// ---------------------------------------------------------------------------
+model Payment {
+  id             String   @id @default(uuid())
+  registration   Registration @relation(fields: [registrationId], references: [id])
+  registrationId String
+
+  provider       String   @default("CELTIS") // ou "MOCK" en sandbox
+  transactionId  String?  @unique // id transaction cote provider
+  amount         Int      // FCFA, tel que confirme par le provider
+  currency       String   @default("XOF")
+  status         PaymentStatus @default(PENDING)
+  rawReference   String?  // reference brute renvoyee par Celtis
+  webhookEventId String?  @unique // pour idempotence stricte des webhooks
+  failureReason  String?
+  paidAt         DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([registrationId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+// ---------------------------------------------------------------------------
+// TICKET
+// ---------------------------------------------------------------------------
+model Ticket {
+  id             String   @id @default(uuid())
+  registration   Registration @relation(fields: [registrationId], references: [id])
+  registrationId String   @unique
+
+  ticketNumber   String   @unique // ex: DT-TKT-8F39A2
+  qrToken        String   @unique // identifiant securise, aleatoire, opaque
+  status         TicketStatus @default(VALID)
+  generatedAt    DateTime @default(now())
+  usedAt         DateTime?
+
+  scans TicketScan[]
+}
+
+enum TicketStatus {
+  VALID
+  USED
+  REVOKED
+}
+
+// ---------------------------------------------------------------------------
+// TICKET SCAN — journal de tous les scans (audit, anti double-entree)
+// ---------------------------------------------------------------------------
+model TicketScan {
+  id        String   @id @default(uuid())
+  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
+  ticketId  String?
+  qrToken   String   // valeur brute scannee, meme si invalide
+  result    ScanResult
+  scannedBy String?  // admin id
+  scannedAt DateTime @default(now())
+}
+
+enum ScanResult {
+  VALID
+  ALREADY_USED
+  INVALID
+}
