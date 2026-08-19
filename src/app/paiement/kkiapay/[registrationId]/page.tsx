@@ -46,6 +46,11 @@ export default function KkiapayPaymentPage({
           key: publicKey,
           sandbox: process.env.NEXT_PUBLIC_KKIAPAY_SANDBOX === "true",
           fullname: name,
+          // Numero deja normalise (sans indicatif pays) par
+          // normalizePhoneForKkiapay cote serveur. On restreint le widget au
+          // Benin pour que ce soit lui qui applique l'indicatif +229, evitant
+          // tout risque de numero double-prefixe ("numero invalide").
+          countries: ["BJ"] as never,
           phone,
           email,
           data: JSON.stringify({ registrationId: params.registrationId, reference: ref })

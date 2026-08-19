@@ -31,7 +31,15 @@ import type {
  *       reponse.status: SUCCESS | FAILED | INSUFFICIENT_FUND |
  *         TRANSACTION_NOT_ELIGIBLE | TRANSACTION_NOT_FOUND |
  *         INVALID_TRANSACTION | INVALID_TRANSACTION_TYPE
- */
+ */ 
+
+export function normalizePhoneForKkiapay(rawPhone: string): string {
+  const digitsOnly = rawPhone.replace(/\D/g, "");
+  if (digitsOnly.startsWith("229") && digitsOnly.length > 10) {
+    return digitsOnly.slice(3);
+  }
+  return digitsOnly;
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name];
