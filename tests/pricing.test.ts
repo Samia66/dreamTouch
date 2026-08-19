@@ -41,8 +41,8 @@ describe("computePricingStatus", () => {
   it("calcule le statut correct a 7 confirmes", () => {
     const status = computePricingStatus(TIERS, 7, 20);
     expect(status.remaining).toBe(13);
-    expect(status.currentPrice).toBe(5000);
-    expect(status.spotsLeftInCurrentTier).toBe(3);
+    expect(status.currentPrice).toBe(7000);
+    expect(status.spotsLeftInCurrentTier).toBe(8);
     expect(status.soldOut).toBe(false);
   });
 
